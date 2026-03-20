@@ -312,48 +312,50 @@ document.addEventListener('contextmenu', function(e) {
     </div>
   </section>
   
-<table width=100%><td>
-  <section id="speedTestLink" style="margin:40px 0;text-align:center;">
+<!-- WRAPPED EXTRA CONTENT -->
+<div id="extraSections">
 
-  <h2 style="color:#00295f;">English Speed Test</h2>
-
-  <p style="color:#555;margin-bottom:15px;">
-    Test your typing speed and accuracy<br> before starting practice exercises.
-  </p>
-
-  <a href="english_tutor.html" class="speed-btn">
-    Start Speed Test
-  </a>
-
-</section></td>
+<table width="100%">
+<tr>
 <td>
-  <section id="speedTestLink" style="margin:40px 0;text-align:center;">
+  <section style="margin:40px 0;text-align:center;">
+    <h2 style="color:#00295f;">English Speed Test</h2>
+    <p style="color:#555;margin-bottom:15px;">
+      Test your typing speed and accuracy<br> before starting practice exercises.
+    </p>
+    <a href="english_tutor.html" class="speed-btn">
+      Start Speed Test
+    </a>
+  </section>
+</td>
 
-  <h2 style="color:#00295f;">Special Long Paragraph </h2>
+<td>
+  <section style="margin:40px 0;text-align:center;">
+    <h2 style="color:#00295f;">Special Long Paragraph</h2>
+    <p style="color:#555;margin-bottom:15px;">
+      Long Paragraph Practice Exercises <br>(SSC, RRB, Courts, etc.)
+    </p>
+    <a href="engexercises.html" class="speed-btn">
+      Special Long Practice Exercises 
+    </a>
+  </section>
+</td>
+</tr>
+</table>
 
-  <p style="color:#555;margin-bottom:15px;">
-    Long Paragraph Practice Exercies <br>(SSC CGL/CHSL,RRB,Punjab Haryana High Court Exams, etc.)
-  </p>
+<hr style="margin:40px 0">
 
-  <a href="engexercises.html" class="speed-btn">
-    Spacial Long Practice Exercises 
-  </a>
-
-</section></td></table>
-
-  <hr style="margin:40px 0">
-  <section id="practiceExercises" style="margin-top:40px">
-
-<h2 style="color:#00295f">English Exercises Practice with Chunk</h2>
-
-<div id="exerciseListEnglish" style="
-display:flex;
-flex-wrap:wrap;
-gap:10px;
-margin-top:15px;
-"></div>
-
+<section id="practiceExercises" style="margin-top:40px">
+  <h2 style="color:#00295f">English Exercises Practice with Chunk</h2>
+  <div id="exerciseListEnglish" style="
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    margin-top:15px;
+  "></div>
 </section>
+
+</div>
 </main>
 
 <script>
@@ -421,7 +423,7 @@ renderEnglishExercises();
 
 
 	const lessonWordCounts = {
-	  lesson1: 120,
+	  lesson1: 12,
 	  lesson2: 120,
 	  lesson3: 120,
 	  lesson4: 100,
@@ -452,6 +454,7 @@ renderEnglishExercises();
 	  const newTextBtn = document.getElementById('newTextBtn');
 
 	  // ---------- state ----------
+	  let errorMap = {}; // { a: 3, b: 1, 'e': 5 }
 	  let currentLesson = null;
 	  let currentString = "";
 	  let charSpans = []; // NodeList of char spans
@@ -549,24 +552,31 @@ renderEnglishExercises();
 	  }
 
 	  // ---------- start lesson ----------
-	  function startLesson(lessonKey){
-		currentLesson = lessonKey;
-		lessonTitle.textContent = lessonLabels[lessonKey] || lessonKey;
-		lessonsSection.style.display = 'none';
-		testArea.style.display = 'block';
-		resultsBox.style.display = 'none';
-		resetStats();
-		const wordCount = lessonWordCounts[lessonKey] || 80;
-	currentString = generateRandomText(lessonKey, wordCount);
-		renderText(currentString);
-		// focus for key capture
-		textDisplay.focus();
-	  }
+function startLesson(lessonKey){
+  currentLesson = lessonKey;
+  lessonTitle.textContent = lessonLabels[lessonKey] || lessonKey;
+
+  lessonsSection.style.display = 'none';
+  testArea.style.display = 'block';
+
+  // ✅ HIDE EXTRA SECTIONS
+  document.getElementById("extraSections").style.display = "none";
+
+  resultsBox.style.display = 'none';
+  resetStats();
+
+  const wordCount = lessonWordCounts[lessonKey] || 80;
+  currentString = generateRandomText(lessonKey, wordCount);
+
+  renderText(currentString);
+  textDisplay.focus();
+}
 
 	  // ---------- reset stats ----------
 	  function resetStats(){
 		stopTimer();
 		startedAt = 0;
+		errorMap = {};
 		correctChars = 0; wrongHits = 0; cursor = 0; running = false;
 		correctCountEl.textContent = '0';
 		wrongCountEl.textContent = '0';
@@ -709,18 +719,24 @@ renderEnglishExercises();
 		}
 	  }
 
-	  function markWrong(){
-		// increment wrongHits and flash current char red briefly
-		wrongHits++;
-		wrongCountEl.textContent = String(wrongHits);
-		updateAccuracy();
-		// add a visual flash class
-		const obj = charSpans[cursor];
-		obj.span.classList.remove('flash');
-		void obj.span.offsetWidth; // force reflow to restart animation
-		obj.span.classList.add('flash','incorrect');
-		// do not advance cursor — user must press correct key to continue
-	  }
+function markWrong(){
+  wrongHits++;
+  wrongCountEl.textContent = String(wrongHits);
+  updateAccuracy();
+
+  const expected = charSpans[cursor].char;
+
+  // track error
+  if(expected){
+    errorMap[expected] = (errorMap[expected] || 0) + 1;
+  }
+
+  // flash UI
+  const obj = charSpans[cursor];
+  obj.span.classList.remove('flash');
+  void obj.span.offsetWidth;
+  obj.span.classList.add('flash','incorrect');
+}
 
 	  function recomputeCountsFromDOM(){
 		// useful after backspace: recompute counts
@@ -744,12 +760,27 @@ renderEnglishExercises();
 		const wpm = Math.round((correctChars / 5) / Math.max(minutes, 1/60));
 		const totalHits = correctChars + wrongHits;
 		const accuracy = totalHits ? Math.round((correctChars / totalHits) * 100) : 0;
+			let errorHTML = "";
 
-		finalSummary.innerHTML = `
-		  <strong>Completed in ${formatTime(elapsedSeconds)} — WPM: ${wpm} — Accuracy: ${accuracy}%</strong>
-		  <br>
-		  Correct characters: ${correctChars} &nbsp; • &nbsp; Wrong hits: ${wrongHits}
-		`;
+const sortedErrors = Object.entries(errorMap)
+  .sort((a,b) => b[1] - a[1]);
+
+if(sortedErrors.length){
+  errorHTML = "<br><br><strong>Most Mistyped Characters:</strong><br>";
+  sortedErrors.forEach(([char,count]) => {
+    const displayChar = char === " " ? "[space]" : char;
+    errorHTML += `${displayChar} → ${count} times<br>`;
+  });
+}
+			
+			
+
+	finalSummary.innerHTML = `
+  <strong>Completed in ${formatTime(elapsedSeconds)} — WPM: ${wpm} — Accuracy: ${accuracy}%</strong>
+  <br>
+  Correct characters: ${correctChars} &nbsp; • &nbsp; Wrong hits: ${wrongHits}
+  ${errorHTML}
+`;
 		resultsBox.style.display = 'block';
 		// final update of stat boxes
 		wpmEl.textContent = String(wpm);
@@ -764,11 +795,15 @@ renderEnglishExercises();
 	  }
 
 	  // ---------- UI actions ----------
-	  backToLessons.addEventListener('click', () => {
-		testArea.style.display = 'none';
-		lessonsSection.style.display = 'block';
-		resetStats();
-	  });
+	backToLessons.addEventListener('click', () => {
+  testArea.style.display = 'none';
+  lessonsSection.style.display = 'block';
+
+  // ✅ SHOW AGAIN
+  document.getElementById("extraSections").style.display = "block";
+
+  resetStats();
+});
 
 	restartBtn.addEventListener('click', () => {
   resetStats();
@@ -826,4 +861,32 @@ renderEnglishExercises();
 
 	</body>
 	</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
